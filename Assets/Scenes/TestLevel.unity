@@ -960,17 +960,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerScript
   ActionAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   PlayerSpriteObj: {fileID: 1528409614}
-  moveSpeed: 80
-  airControlPercentage: 0.1
-  diveControlPercentage: 0.001
+  SpriteSheets:
+  - {fileID: 2800000, guid: 2c0a7588c4c279240b240f5caf2bb43c, type: 3}
+  - {fileID: 2800000, guid: e70e6074cc7c7d44eac713e37ce04ef3, type: 3}
+  - {fileID: 2800000, guid: 252fb8233dbbb374ca5ac6c42a146862, type: 3}
+  - {fileID: 2800000, guid: cc71b4febb3dc2a499e2aa8a32bf7e07, type: 3}
+  MoveSpeed: 80
+  AirControlPercentage: 0.1
+  DiveControlPercentage: 0.05
   AirFrictionPercentage: 0.99
   GroundFrictionPercentage: 0.9
-  maxGroundSpeed: 5
-  maxAirSpeed: 5
-  jumpHeight: 2
-  gravity: -20
-  diveSpeed: 15
-  diveDuration: 0.2
+  MaxGroundSpeed: 8
+  MaxAirSpeed: 5
+  JumpHeight: 2
+  Gravity: -20
+  DiveSpeed: 10
+  DiveDuration: 0.4
 --- !u!54 &1154691449
 Rigidbody:
   m_ObjectHideFlags: 0

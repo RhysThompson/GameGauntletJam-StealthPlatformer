@@ -2,6 +2,38 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Windows;
 
+enum SPRITE_FRAMES
+{
+    RUN1,
+    RUN2,
+    RUN_END = RUN2,
+    INAIR,
+    INAIR_END = INAIR,
+    DIVE1,
+    DIVE_END = DIVE1,
+    GLIDING1,
+    GLIDING_END = GLIDING1,
+
+    IDLE1 = INAIR, // Currently don't have an idle frame - fix later
+    IDLE_END = IDLE1,
+}
+enum SPRITE_DIRECTION
+{
+    AWAY,
+    TOWARDS,
+    RIGHT,
+    LEFT,
+    NUM_DIRECTIONS
+}
+
+enum PLAYER_STATES
+{
+    IDLE,
+    RUNNING,
+    IN_AIR,
+    DIVING,
+    GLIDING
+}
 public class PlayerScript : MonoBehaviour
 {
     [Header("References")]
@@ -13,39 +45,43 @@ public class PlayerScript : MonoBehaviour
     public GameObject PlayerSpriteObj;
     Material PlayerSpriteMat;
 
+    public Texture2D[] SpriteSheets;
+
     // Run Animation variables
-    static float[] RunAnimOffsetList = { 0f, 0.25f };
-    int NumberOfRunFrames = 2;
-    int CurrentRunFrame = 0;
-    float TimeSinceRunFrameChanged = 0;
-    float RunAnimFrameRate = 0.5f;
+    static public int SpriteSheetWidth = 4; // how many sprite columns
+    static public int SpriteSheetHeight = 4; // how many sprite rows
+    float TimeSinceFrameChanged = 0;
+    float AnimFrameRate = 0.5f;
     
-    float CurrentDirectionOffset = 0.75f; // default is away
+    SPRITE_DIRECTION CurrentlyDisplayedDirection;
+
+    SPRITE_FRAMES CurrentFrame = SPRITE_FRAMES.IDLE1;
+    SPRITE_FRAMES CurrentAnimStartFrame = SPRITE_FRAMES.IDLE1;
+    SPRITE_FRAMES CurrentAnimEndFrame = SPRITE_FRAMES.IDLE1;
+
+    PLAYER_STATES CurrentState = PLAYER_STATES.IDLE;
 
     [Header("Movement")]
-    public float moveSpeed = 8f;
-    public float airControlPercentage = 0.001f;
-    public float diveControlPercentage = 0.1f;
+    public float MoveSpeed = 8f;
+    public float AirControlPercentage = 0.2f;
+    public float DiveControlPercentage = 0.05f;
+    public float GlidingControlPercentage = 0.6f;
     public float AirFrictionPercentage = 0.99f;
     public float GroundFrictionPercentage = 0.9f;
-    public float maxGroundSpeed = 8f;
-    public float maxAirSpeed = 5f;
+    public float MaxGroundSpeed = 8f;
+    public float MaxAirSpeed = 5f;
+    public float JumpHeight = 2f;
+    public float Gravity = -20f;
+    public float MaxFallSpeed = -20f;
+    public float MaxGlidingFallSpeed = -2f;
+    public float DiveSpeed = 10f;
+    public float DiveDuration = 0.4f;
 
-    [Header("Jumping")]
-    public float jumpHeight = 2f;
-    public float gravity = -20f;
-
-    [Header("Dive")]
-    public float diveSpeed = 10f;
-    public float diveDuration = 0.4f;
-
-    private CharacterController controller;
-    private Vector3 velocity;
-    private Vector3 lastMovementDirection = Vector3.forward;
-    private bool isDiving = false;
-    private bool canDive = false;
-    private float diveZeroGravTimer = 0f;
-
+    private CharacterController Controller;
+    private Vector3 Velocity;
+    private Vector3 LastMovementDirection = Vector3.forward;
+    private bool CanDive = false;
+    private float DiveZeroGravTimer = 0f;
 
     void OnEnable()
     {
@@ -63,7 +99,7 @@ public class PlayerScript : MonoBehaviour
         JumpAction = InputSystem.actions.FindAction("Jump");
         DiveAction = InputSystem.actions.FindAction("Dive");
         PlayerSpriteMat = PlayerSpriteObj.GetComponent<Renderer>().material;
-        controller = GetComponent<CharacterController>();
+        Controller = GetComponent<CharacterController>();
     }
 
     void Update()
@@ -74,6 +110,7 @@ public class PlayerScript : MonoBehaviour
         HandleGravity();
         HandleJump();
         HandleDive();
+        HandleGlide();
         HandleSprite();
 
         SetVelocity();
@@ -81,12 +118,12 @@ public class PlayerScript : MonoBehaviour
 
     void GetVelocity()
     {
-        velocity.x = controller.velocity.x;
-        velocity.z = controller.velocity.z;
+        Velocity.x = Controller.velocity.x;
+        Velocity.z = Controller.velocity.z;
     }
     void SetVelocity()
     {
-        controller.Move(velocity * Time.deltaTime);
+        Controller.Move(Velocity * Time.deltaTime);
     }
 
     void OrientToCameraAngle()
@@ -101,11 +138,11 @@ public class PlayerScript : MonoBehaviour
     void HandleMovement()
     {
         // Apply friction
-        velocity.x *= controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
-        velocity.z *= controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
+        Velocity.x *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
+        Velocity.z *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
 
-        if (velocity.x < 0.01f && velocity.x > -0.01f) velocity.x = 0;
-        if (velocity.z < 0.01f && velocity.z > -0.01f) velocity.z = 0;
+        if (Velocity.x < 0.01f && Velocity.x > -0.01f) Velocity.x = 0;
+        if (Velocity.z < 0.01f && Velocity.z > -0.01f) Velocity.z = 0;
 
         Vector2 moveInput = MoveAction.ReadValue<Vector2>();
         Vector3 input = new Vector3(moveInput.x, 0, moveInput.y);
@@ -114,152 +151,138 @@ public class PlayerScript : MonoBehaviour
         {
             OrientToCameraAngle();
 
-            float control = controller.isGrounded ? 1f : (isDiving ? diveControlPercentage : airControlPercentage);
-            Vector3 move = transform.TransformDirection(input) * moveSpeed * control;
-            
-            if(controller.isGrounded)
+            // apply control debuffs for when movement control is reduced
+            float control = 1f; 
+            switch (CurrentState)
             {
-                velocity.x += move.x * Time.deltaTime;
-                velocity.z += move.z * Time.deltaTime;
+                case PLAYER_STATES.IN_AIR:
+                    control = AirControlPercentage;
+                    break;
+                case PLAYER_STATES.DIVING:
+                    control = DiveControlPercentage;
+                    break;
+                case PLAYER_STATES.GLIDING:
+                    control = GlidingControlPercentage;
+                    break;
+            }
+            
+            Vector3 move = transform.TransformDirection(input) * MoveSpeed * control;
+
+            if (Controller.isGrounded)
+            {
+                Velocity.x += move.x * Time.deltaTime;
+                Velocity.z += move.z * Time.deltaTime;
 
                 // cap move speed
-                Vector3 vel = new Vector3(velocity.x, 0, velocity.z);
+                Vector3 vel = new Vector3(Velocity.x, 0, Velocity.z);
 
-                if (vel.magnitude > maxGroundSpeed)
+                if (vel.magnitude > MaxGroundSpeed)
                 {
-                    vel = vel.normalized * maxGroundSpeed;
+                    vel = vel.normalized * MaxGroundSpeed;
                 }
 
-                velocity = new Vector3(vel.x, velocity.y, vel.z);
+                Velocity = new Vector3(vel.x, Velocity.y, vel.z);
+
+                if (CurrentState != PLAYER_STATES.RUNNING)
+                {
+                    CurrentState = PLAYER_STATES.RUNNING;
+                    SetAnim(SPRITE_FRAMES.RUN1, SPRITE_FRAMES.RUN_END);
+                }
             }
             else
             {
-                velocity.x += move.x * Time.deltaTime;
-                velocity.z += move.z * Time.deltaTime;
+                Velocity.x += move.x * Time.deltaTime;
+                Velocity.z += move.z * Time.deltaTime;
 
                 // cap move speed
-                Vector3 vel = new Vector3(velocity.x, 0, velocity.z);
+                Vector3 vel = new Vector3(Velocity.x, 0, Velocity.z);
 
-                if (vel.magnitude > maxAirSpeed && !isDiving)
+                if (vel.magnitude > MaxAirSpeed && CurrentState != PLAYER_STATES.DIVING)
                 {
-                    vel = vel.normalized * maxAirSpeed;
+                    vel = vel.normalized * MaxAirSpeed;
                 }
 
-                velocity = new Vector3(vel.x, velocity.y, vel.z);
+                Velocity = new Vector3(vel.x, Velocity.y, vel.z);
+            }
+        }
+        else // if no input
+        {
+            if(Controller.isGrounded)
+            {
+                if (CurrentState != PLAYER_STATES.IDLE)
+                {
+                    CurrentState = PLAYER_STATES.IDLE;
+                    SetAnim(SPRITE_FRAMES.IDLE1, SPRITE_FRAMES.IDLE_END);
+                }
             }
         }
 
-        if (velocity.x + velocity.z != 0)
-            lastMovementDirection = velocity.normalized;
+        if (Velocity.x + Velocity.z != 0)
+            LastMovementDirection = Velocity.normalized;
     }
 
     void HandleGravity()
     {
-        if (controller.isGrounded && velocity.y < 0)
-            velocity.y = -2f; // Keeps player grounded
+        if (Controller.isGrounded && Velocity.y < 0)
+            Velocity.y = -2f; // Keeps player grounded
 
-        if (diveZeroGravTimer <= 0)
-            velocity.y += gravity * Time.deltaTime;
+        if (DiveZeroGravTimer > 0)
+            return;
+
+        Velocity.y += Gravity * Time.deltaTime;
+
+        if (CurrentState == PLAYER_STATES.GLIDING)
+        {
+            if (Velocity.y < MaxGlidingFallSpeed)
+                Velocity.y = MaxGlidingFallSpeed;
+        }
+        else
+        {
+            if (Velocity.y < MaxFallSpeed)
+                Velocity.y = MaxFallSpeed;
+        }
     }
 
     void HandleJump()
     {
-        if (controller.isGrounded && JumpAction.WasPressedThisFrame() && !isDiving)
+        if (Controller.isGrounded && JumpAction.WasPressedThisFrame() && CurrentState != PLAYER_STATES.DIVING)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            Velocity.y = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+            CurrentState = PLAYER_STATES.IN_AIR;
+            SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
         }
     }
 
     void HandleDive()
     {
         // Reset dive when on the ground
-        if (controller.isGrounded) canDive = true;
-        
+        if (Controller.isGrounded) CanDive = true;
+
         // Check for and do the dive
-        if (DiveAction.WasPressedThisFrame() && !controller.isGrounded && !isDiving && canDive)
+        if (DiveAction.WasPressedThisFrame() && !Controller.isGrounded && CurrentState == PLAYER_STATES.IN_AIR && CanDive)
         {
             StartDive();
         }
 
         // Count down the timer for the dive
-        if (isDiving)
+        if (CurrentState == PLAYER_STATES.DIVING)
         {
-            diveZeroGravTimer -= Time.deltaTime;
+            DiveZeroGravTimer -= Time.deltaTime;
 
-            if (controller.isGrounded)
+            if (Controller.isGrounded)
                 EndDive();
         }
     }
 
-    void HandleSprite()
-    {
-        // Increment run animation
-        if (MoveAction.IsPressed() && controller.isGrounded)
-        {
-            if (TimeSinceRunFrameChanged > 0)
-                TimeSinceRunFrameChanged -= Time.fixedDeltaTime;
-            else
-            {
-                TimeSinceRunFrameChanged = RunAnimFrameRate;
-
-                CurrentRunFrame++;
-                if (CurrentRunFrame == NumberOfRunFrames) CurrentRunFrame = 0;
-            }
-        }
-
-        // Work out the direction the player is facing relative to the camera
-        Vector3 camForward = Camera.main.transform.forward;
-        Vector3 camRight = Camera.main.transform.right;
-        
-        camForward.y = 0;
-        camRight.y = 0;
-        camForward.Normalize();
-        camRight.Normalize();
-
-        float forwardDot = Vector3.Dot(lastMovementDirection.normalized, camForward);
-        float rightDot = Vector3.Dot(lastMovementDirection.normalized, camRight);
-
-        if (Mathf.Abs(forwardDot) > Mathf.Abs(rightDot))
-        {
-            if (forwardDot > 0) 
-                CurrentDirectionOffset = 0.75f; // away
-            else 
-                CurrentDirectionOffset = 0.25f; //towards
-        }
-        else
-        {
-            if (rightDot > 0) 
-                CurrentDirectionOffset = 0.5f; // right
-            else 
-                CurrentDirectionOffset = 0f; // left
-        }
-
-        float frameOffset = 0.1f;
-
-        if(controller.isGrounded)
-        {
-            if (MoveAction.IsPressed())
-                frameOffset = RunAnimOffsetList[CurrentRunFrame];
-            else
-                frameOffset = 0.5f;
-        }
-        else
-        {
-            if (isDiving)
-                frameOffset = 0.75f;
-            else
-                frameOffset = 0.5f;
-        }
-        PlayerSpriteMat.SetTextureOffset("_MainTex", new Vector2(frameOffset, CurrentDirectionOffset));
-    }
-
     void StartDive()
     {
-        isDiving = true;
-        canDive = false;
-        diveZeroGravTimer = diveDuration;
+        CurrentState = PLAYER_STATES.DIVING;
+        SetAnim(SPRITE_FRAMES.DIVE1, SPRITE_FRAMES.DIVE_END);
 
-        Vector3 dir = velocity;
+        CanDive = false;
+        DiveZeroGravTimer = DiveDuration;
+
+        Vector3 dir = Velocity;
         dir.y = 0;
         dir.Normalize();
 
@@ -269,12 +292,107 @@ public class PlayerScript : MonoBehaviour
             OrientToCameraAngle();
             dir = this.transform.forward;
         }
-        velocity = dir * diveSpeed;
+        Velocity = dir * DiveSpeed;
     }
 
     void EndDive()
     {
-        isDiving = false;
-        diveZeroGravTimer = 0;
+        CurrentState = PLAYER_STATES.IDLE;
+        DiveZeroGravTimer = 0;
+    }
+
+    void HandleGlide()
+    {
+        if (JumpAction.WasPressedThisFrame() && !Controller.isGrounded)
+        {
+            if (CurrentState == PLAYER_STATES.IN_AIR)
+            {
+                CurrentState = PLAYER_STATES.GLIDING;
+                SetAnim(SPRITE_FRAMES.GLIDING1, SPRITE_FRAMES.GLIDING_END);
+            }
+            else if (CurrentState == PLAYER_STATES.GLIDING)
+            {
+                CurrentState = PLAYER_STATES.IN_AIR;
+                SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
+            }
+        }
+
+        if (CurrentState == PLAYER_STATES.GLIDING)
+        {
+            if (Controller.isGrounded)
+            {
+                CurrentState = PLAYER_STATES.IN_AIR;
+            }
+        }
+    }
+
+    void HandleSprite()
+    {
+        // Increment animation
+        if (TimeSinceFrameChanged > 0)
+            TimeSinceFrameChanged -= Time.deltaTime;
+        else
+        {
+            TimeSinceFrameChanged = AnimFrameRate;
+
+            if (CurrentFrame >= CurrentAnimEndFrame)
+                CurrentFrame = CurrentAnimStartFrame;
+            else
+                CurrentFrame++;
+        }
+
+        // Work out the direction the player is facing relative to the camera
+        Vector3 camForward = Camera.main.transform.forward;
+        Vector3 camRight = Camera.main.transform.right;
+
+        camForward.y = 0;
+        camRight.y = 0;
+        camForward.Normalize();
+        camRight.Normalize();
+
+        float forwardDot = Vector3.Dot(LastMovementDirection.normalized, camForward);
+        float rightDot = Vector3.Dot(LastMovementDirection.normalized, camRight);
+
+        SPRITE_DIRECTION previousDisplayedDirection = CurrentlyDisplayedDirection;
+
+        if (Mathf.Abs(forwardDot) > Mathf.Abs(rightDot))
+        {
+            if (forwardDot > 0)
+                CurrentlyDisplayedDirection = SPRITE_DIRECTION.AWAY; // away
+            else
+                CurrentlyDisplayedDirection = SPRITE_DIRECTION.TOWARDS; //towards
+        }
+        else
+        {
+            if (rightDot > 0)
+                CurrentlyDisplayedDirection = SPRITE_DIRECTION.RIGHT; // right
+            else
+                CurrentlyDisplayedDirection = SPRITE_DIRECTION.LEFT; // left
+        }
+
+        // Switch to the correct direction texture
+        if (CurrentlyDisplayedDirection != previousDisplayedDirection)
+            PlayerSpriteMat.SetTexture("_MainTex", SpriteSheets[(int)CurrentlyDisplayedDirection]);
+
+        SetSpriteFrame((int)CurrentFrame);
+    }
+
+    void SetSpriteFrame(int frame)
+    {
+        int column = frame % SpriteSheetWidth;
+        int row = frame / SpriteSheetWidth;
+        
+        float columnOffset = (1f / SpriteSheetWidth) * column;
+        float rowOffset = 1 - ((1f / SpriteSheetHeight) * (row + 1));
+
+        PlayerSpriteMat.SetTextureOffset("_MainTex", new Vector2(columnOffset, rowOffset));
+    }
+
+    void SetAnim(SPRITE_FRAMES startFrame, SPRITE_FRAMES endFrame)
+    {
+        CurrentAnimStartFrame = startFrame;
+        CurrentAnimEndFrame = endFrame;
+        CurrentFrame = startFrame;
+        TimeSinceFrameChanged = AnimFrameRate + Time.deltaTime;
     }
 }
