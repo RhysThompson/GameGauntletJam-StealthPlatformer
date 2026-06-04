@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Windows;
@@ -68,6 +69,7 @@ public class PlayerScript : MonoBehaviour
     public float GlidingControlPercentage = 0.6f;
     public float AirFrictionPercentage = 0.99f;
     public float GroundFrictionPercentage = 0.9f;
+    public float AirCurrentGravityFrictionPercentage = 0.8f;
     public float MaxGroundSpeed = 8f;
     public float MaxAirSpeed = 5f;
     public float JumpHeight = 2f;
@@ -79,9 +81,14 @@ public class PlayerScript : MonoBehaviour
 
     private CharacterController Controller;
     private Vector3 Velocity;
+    private Vector3 WindGlideForce = Vector3.zero;
+    private Vector3 WindForce = Vector3.zero;
     private Vector3 LastMovementDirection = Vector3.forward;
     private bool CanDive = false;
     private float DiveZeroGravTimer = 0f;
+    private Vector3 LastCheckpoint;
+
+    List<WindCurrentScript> ActiveAirCurrents = new List<WindCurrentScript>();
 
     void OnEnable()
     {
@@ -100,6 +107,31 @@ public class PlayerScript : MonoBehaviour
         DiveAction = InputSystem.actions.FindAction("Dive");
         PlayerSpriteMat = PlayerSpriteObj.GetComponent<Renderer>().material;
         Controller = GetComponent<CharacterController>();
+        LastCheckpoint = this.transform.position;
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if(other.tag == "AirCurrent")
+        {
+            ActiveAirCurrents.Add(other.gameObject.GetComponent<WindCurrentScript>());
+        }
+        else if(other.tag == "Checkpoint")
+        {
+            LastCheckpoint = other.transform.position;
+        }
+        else if (other.tag == "Hazard")
+        {
+            Die();
+        }
+    }
+
+    void OnTriggerExit(Collider other)
+    {
+        if (other.tag == "AirCurrent")
+        {
+            ActiveAirCurrents.Remove(other.gameObject.GetComponent<WindCurrentScript>());
+        }
     }
 
     void Update()
@@ -108,6 +140,7 @@ public class PlayerScript : MonoBehaviour
 
         HandleMovement();
         HandleGravity();
+        HandleExternalForce();
         HandleJump();
         HandleDive();
         HandleGlide();
@@ -140,6 +173,9 @@ public class PlayerScript : MonoBehaviour
         // Apply friction
         Velocity.x *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
         Velocity.z *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
+        if (WindGlideForce + WindGlideForce != Vector3.zero && CurrentState == PLAYER_STATES.GLIDING)
+            Velocity.y *= AirCurrentGravityFrictionPercentage;
+
 
         if (Velocity.x < 0.01f && Velocity.x > -0.01f) Velocity.x = 0;
         if (Velocity.z < 0.01f && Velocity.z > -0.01f) Velocity.z = 0;
@@ -223,13 +259,22 @@ public class PlayerScript : MonoBehaviour
 
     void HandleGravity()
     {
-        if (Controller.isGrounded && Velocity.y < 0)
-            Velocity.y = -2f; // Keeps player grounded
-
         if (DiveZeroGravTimer > 0)
             return;
 
-        Velocity.y += Gravity * Time.deltaTime;
+        if (Controller.isGrounded && Velocity.y < 0)
+            Velocity.y = -0.01f;
+
+
+        // apply gravity except when gliding in an air current
+        if (WindGlideForce + WindGlideForce != Vector3.zero && CurrentState == PLAYER_STATES.GLIDING)
+        {
+            
+        }
+        else if(!Controller.isGrounded)
+        {
+            Velocity.y += Gravity * Time.deltaTime;
+        }
 
         if (CurrentState == PLAYER_STATES.GLIDING)
         {
@@ -243,16 +288,50 @@ public class PlayerScript : MonoBehaviour
         }
     }
 
+    void HandleExternalForce()
+    {
+        WindGlideForce = Vector3.zero;
+        WindForce = Vector3.zero;
+        foreach (WindCurrentScript current in ActiveAirCurrents)
+        {
+            WindGlideForce += current.GliderWindDirection;
+            WindForce += current.WindDirection;
+        }
+
+        if (CurrentState == PLAYER_STATES.GLIDING)
+        {
+            if (WindGlideForce + WindGlideForce == Vector3.zero)
+                return;
+            Velocity += WindGlideForce * Time.deltaTime;
+            Velocity += WindForce * Time.deltaTime;
+        }
+        else
+        {
+            if (WindGlideForce == Vector3.zero)
+                return;
+            Velocity += WindForce * Time.deltaTime;
+        }
+    }
+
+    public void AddForce(Vector3 force)
+    {
+        Velocity = force;
+    }
+
     void HandleJump()
     {
         if (Controller.isGrounded && JumpAction.WasPressedThisFrame() && CurrentState != PLAYER_STATES.DIVING)
         {
             Velocity.y = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+        }
+
+        if ((CurrentState == PLAYER_STATES.IDLE || CurrentState == PLAYER_STATES.RUNNING) && !Controller.isGrounded)
+        {
             CurrentState = PLAYER_STATES.IN_AIR;
             SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
         }
-    }
 
+    }
     void HandleDive()
     {
         // Reset dive when on the ground
@@ -394,5 +473,12 @@ public class PlayerScript : MonoBehaviour
         CurrentAnimEndFrame = endFrame;
         CurrentFrame = startFrame;
         TimeSinceFrameChanged = AnimFrameRate + Time.deltaTime;
+    }
+
+    void Die()
+    {
+        Controller.enabled = false;
+        this.transform.position = LastCheckpoint;
+        Controller.enabled = true;
     }
 }
