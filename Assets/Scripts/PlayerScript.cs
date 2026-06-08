@@ -145,6 +145,7 @@ public class PlayerScript : MonoBehaviour
         HandleDive();
         HandleGlide();
         HandleSprite();
+        print(CurrentState);
 
         SetVelocity();
     }
@@ -263,7 +264,7 @@ public class PlayerScript : MonoBehaviour
             return;
 
         if (Controller.isGrounded && Velocity.y < 0)
-            Velocity.y = -0.01f;
+            Velocity.y = -0.3f;
 
 
         // apply gravity except when gliding in an air current
