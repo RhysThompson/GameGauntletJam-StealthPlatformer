@@ -82,6 +82,9 @@ public class PlayerScript : MonoBehaviour
     public float DiveSpeed = 10f;
     public float DiveDuration = 0.4f;
 
+    public float CoyoteTime = 0.15f;
+    private float TimeSinceGrounded = 0f;
+
     private CharacterController Controller;
     private Vector3 Velocity;
     private Vector3 WindGlideForce = Vector3.zero;
@@ -141,6 +144,7 @@ public class PlayerScript : MonoBehaviour
     {
         GetVelocity();
 
+        HandleGrounded();
         HandleMovement();
         HandleGravity();
         HandleExternalForce();
@@ -148,7 +152,6 @@ public class PlayerScript : MonoBehaviour
         HandleDive();
         HandleGlide();
         HandleSprite();
-        print(CurrentState);
 
         SetVelocity();
     }
@@ -172,11 +175,20 @@ public class PlayerScript : MonoBehaviour
         rot.y += 180;
         this.transform.rotation = Quaternion.Euler(rot);
     }
+
+    void HandleGrounded()
+    {
+        TimeSinceGrounded += Time.deltaTime;
+
+        if(Controller.isGrounded)
+            TimeSinceGrounded = 0f;
+    }
+
     void HandleMovement()
     {
         // Apply friction
-        Velocity.x *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
-        Velocity.z *= Controller.isGrounded ? GroundFrictionPercentage : AirFrictionPercentage;
+        Velocity.x *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
+        Velocity.z *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
         if (WindGlideForce + WindGlideForce != Vector3.zero && CurrentState == PLAYER_STATES.GLIDING)
             Velocity.y *= AirCurrentGravityFrictionPercentage;
 
@@ -208,7 +220,7 @@ public class PlayerScript : MonoBehaviour
             
             Vector3 move = transform.TransformDirection(input) * MoveSpeed * control;
 
-            if (Controller.isGrounded)
+            if (IsOnGround())
             {
                 Velocity.x += move.x * Time.deltaTime;
                 Velocity.z += move.z * Time.deltaTime;
@@ -247,7 +259,7 @@ public class PlayerScript : MonoBehaviour
         }
         else // if no input
         {
-            if(Controller.isGrounded)
+            if(IsOnGround())
             {
                 if (CurrentState != PLAYER_STATES.IDLE)
                 {
@@ -266,7 +278,7 @@ public class PlayerScript : MonoBehaviour
         if (DiveZeroGravTimer > 0)
             return;
 
-        if (Controller.isGrounded && Velocity.y < 0)
+        if (IsOnGround() && Velocity.y < 0)
             Velocity.y = -0.3f;
 
 
@@ -275,7 +287,7 @@ public class PlayerScript : MonoBehaviour
         {
             
         }
-        else if(!Controller.isGrounded)
+        else if(!IsOnGround())
         {
             Velocity.y += Gravity * Time.deltaTime;
         }
@@ -324,12 +336,12 @@ public class PlayerScript : MonoBehaviour
 
     void HandleJump()
     {
-        if (Controller.isGrounded && JumpAction.WasPressedThisFrame() && CurrentState != PLAYER_STATES.DIVING)
+        if (IsOnGround() && JumpAction.WasPressedThisFrame() && CurrentState != PLAYER_STATES.DIVING)
         {
             Velocity.y = Mathf.Sqrt(JumpHeight * -2f * Gravity);
         }
 
-        if ((CurrentState == PLAYER_STATES.IDLE || CurrentState == PLAYER_STATES.RUNNING) && !Controller.isGrounded)
+        if ((CurrentState == PLAYER_STATES.IDLE || CurrentState == PLAYER_STATES.RUNNING) && !IsOnGround())
         {
             CurrentState = PLAYER_STATES.IN_AIR;
             SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
@@ -339,10 +351,10 @@ public class PlayerScript : MonoBehaviour
     void HandleDive()
     {
         // Reset dive when on the ground
-        if (Controller.isGrounded) CanDive = true;
+        if (IsOnGround()) CanDive = true;
 
         // Check for and do the dive
-        if (DiveAction.WasPressedThisFrame() && !Controller.isGrounded && CurrentState == PLAYER_STATES.IN_AIR && CanDive)
+        if (DiveAction.WasPressedThisFrame() && !IsOnGround() && CurrentState == PLAYER_STATES.IN_AIR && CanDive)
         {
             StartDive();
         }
@@ -352,7 +364,7 @@ public class PlayerScript : MonoBehaviour
         {
             DiveZeroGravTimer -= Time.deltaTime;
 
-            if (Controller.isGrounded)
+            if (IsOnGround())
                 EndDive();
         }
     }
@@ -386,7 +398,7 @@ public class PlayerScript : MonoBehaviour
 
     void HandleGlide()
     {
-        if (JumpAction.WasPressedThisFrame() && !Controller.isGrounded)
+        if (JumpAction.WasPressedThisFrame() && !IsOnGround())
         {
             if (CurrentState == PLAYER_STATES.IN_AIR)
             {
@@ -402,7 +414,7 @@ public class PlayerScript : MonoBehaviour
 
         if (CurrentState == PLAYER_STATES.GLIDING)
         {
-            if (Controller.isGrounded)
+            if (IsOnGround())
             {
                 CurrentState = PLAYER_STATES.IN_AIR;
             }
@@ -484,5 +496,10 @@ public class PlayerScript : MonoBehaviour
         Controller.enabled = false;
         this.transform.position = LastCheckpoint;
         Controller.enabled = true;
+    }
+
+    bool IsOnGround()
+    {
+        return TimeSinceGrounded < CoyoteTime;
     }
 }
