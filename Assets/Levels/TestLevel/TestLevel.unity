@@ -5523,7 +5523,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.059736665, y: 0.091071144, z: -0.0054729264, w: 0.994036}
+  m_LocalRotation: {x: 0.059838254, y: 0.07021669, z: -0.0042196778, w: 0.99572647}
   m_LocalPosition: {x: 0, y: 2.29, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -16875,7 +16875,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 865843064}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.059736654, y: 0.09107113, z: -0.0054729246, w: 0.9940361}
+  m_LocalRotation: {x: 0.059838254, y: 0.07021669, z: -0.004219677, w: 0.99572647}
   m_LocalPosition: {x: 0, y: 2.29, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -22232,10 +22232,13 @@ MonoBehaviour:
   ActionAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   PlayerSpriteObj: {fileID: 1528409614}
   SpriteSheets:
-  - {fileID: 2800000, guid: 2c0a7588c4c279240b240f5caf2bb43c, type: 3}
-  - {fileID: 2800000, guid: e70e6074cc7c7d44eac713e37ce04ef3, type: 3}
-  - {fileID: 2800000, guid: 252fb8233dbbb374ca5ac6c42a146862, type: 3}
-  - {fileID: 2800000, guid: cc71b4febb3dc2a499e2aa8a32bf7e07, type: 3}
+  - {fileID: 2800000, guid: fad1310ab4a7103488d087aa636197eb, type: 3}
+  - {fileID: 2800000, guid: 665becdeb7307a3469e5f79c913838d2, type: 3}
+  - {fileID: 2800000, guid: 83e573c97e5771d4b8126d4470fa27c8, type: 3}
+  - {fileID: 2800000, guid: 5cd10ec1fc4999f42b48b119cf40a249, type: 3}
+  SpriteSheetWidth: 7
+  SpriteSheetHeight: 1
+  AnimFrameRate: 0.07
   MoveSpeed: 80
   AirControlPercentage: 0.1
   DiveControlPercentage: 0.05

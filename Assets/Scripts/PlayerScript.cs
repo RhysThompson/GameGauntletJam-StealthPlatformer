@@ -7,16 +7,19 @@ enum SPRITE_FRAMES
 {
     RUN1,
     RUN2,
-    RUN_END = RUN2,
-    INAIR,
-    INAIR_END = INAIR,
-    DIVE1,
-    DIVE_END = DIVE1,
-    GLIDING1,
-    GLIDING_END = GLIDING1,
-
-    IDLE1 = INAIR, // Currently don't have an idle frame - fix later
+    RUN3,
+    RUN4,
+    RUN5,
+    RUN6,
+    RUN_END = RUN6,
+    IDLE1,
     IDLE_END = IDLE1,
+    INAIR = IDLE1,
+    INAIR_END = INAIR,
+    DIVE1 = IDLE1,
+    DIVE_END = DIVE1,
+    GLIDING1 = IDLE1,
+    GLIDING_END = GLIDING1,
 }
 enum SPRITE_DIRECTION
 {
@@ -49,10 +52,10 @@ public class PlayerScript : MonoBehaviour
     public Texture2D[] SpriteSheets;
 
     // Run Animation variables
-    static public int SpriteSheetWidth = 4; // how many sprite columns
-    static public int SpriteSheetHeight = 4; // how many sprite rows
+    public int SpriteSheetWidth = 7; // how many sprite columns
+    public int SpriteSheetHeight = 1; // how many sprite rows
     float TimeSinceFrameChanged = 0;
-    float AnimFrameRate = 0.5f;
+    public float AnimFrameRate = 0.07f;
     
     SPRITE_DIRECTION CurrentlyDisplayedDirection;
 
