@@ -17,8 +17,8 @@ enum SPRITE_FRAMES
     GLIDING1,
     GLIDING_END = GLIDING1,
     INAIR = RUN1,
-    INAIR_END = RUN1,
-    DIVE1 = IDLE1,
+    INAIR_END = INAIR,
+    DIVE1 = RUN2,
     DIVE_END = DIVE1,
     
 }
@@ -46,9 +46,12 @@ public class PlayerScript : MonoBehaviour
     InputAction MoveAction;
     InputAction JumpAction;
     InputAction DiveAction;
+    InputAction PauseAction;
 
     public GameObject PlayerSpriteObj;
     Material PlayerSpriteMat;
+    private GameObject PauseScreen;
+    public GameObject PauseScreenPrefab;
 
     public Texture2D[] SpriteSheets;
 
@@ -73,7 +76,7 @@ public class PlayerScript : MonoBehaviour
     public float GlidingControlPercentage = 0.6f;
     public float AirFrictionPercentage = 0.99f;
     public float GroundFrictionPercentage = 0.9f;
-    public float AirCurrentGravityFrictionPercentage = 0.8f;
+    public float AirCurrentInitialFriction = 0.3f;
     public float MaxGroundSpeed = 8f;
     public float MaxAirSpeed = 5f;
     public float JumpHeight = 2f;
@@ -94,8 +97,10 @@ public class PlayerScript : MonoBehaviour
     private bool CanDive = false;
     private float DiveZeroGravTimer = 0f;
     private Vector3 LastCheckpoint;
+    private bool IsPaused = false;
+    private bool ApplyAirCurrentInitialFriction = false;
 
-    List<WindCurrentScript> ActiveAirCurrents = new List<WindCurrentScript>();
+    List <WindCurrentScript> ActiveAirCurrents = new List<WindCurrentScript>();
 
     void OnEnable()
     {
@@ -112,9 +117,11 @@ public class PlayerScript : MonoBehaviour
         MoveAction = InputSystem.actions.FindAction("Move");
         JumpAction = InputSystem.actions.FindAction("Jump");
         DiveAction = InputSystem.actions.FindAction("Dive");
+        PauseAction = InputSystem.actions.FindAction("Pause");
         PlayerSpriteMat = PlayerSpriteObj.GetComponent<Renderer>().material;
         Controller = GetComponent<CharacterController>();
         LastCheckpoint = this.transform.position;
+        PauseScreen = Instantiate(PauseScreenPrefab);
     }
 
     void OnTriggerEnter(Collider other)
@@ -122,6 +129,8 @@ public class PlayerScript : MonoBehaviour
         if(other.tag == "AirCurrent")
         {
             ActiveAirCurrents.Add(other.gameObject.GetComponent<WindCurrentScript>());
+            if(CurrentState == PLAYER_STATES.GLIDING)
+                ApplyAirCurrentInitialFriction = true;
         }
         else if(other.tag == "Checkpoint")
         {
@@ -143,8 +152,13 @@ public class PlayerScript : MonoBehaviour
 
     void Update()
     {
+        HandlePause();
+        if (IsPaused)
+            return;
+
         GetVelocity();
 
+        
         HandleGrounded();
         HandleMovement();
         HandleGravity();
@@ -190,12 +204,10 @@ public class PlayerScript : MonoBehaviour
         // Apply friction
         Velocity.x *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
         Velocity.z *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
-        if (WindGlideForce + WindGlideForce != Vector3.zero && CurrentState == PLAYER_STATES.GLIDING)
-            Velocity.y *= AirCurrentGravityFrictionPercentage;
 
-
-        if (Velocity.x < 0.01f && Velocity.x > -0.01f) Velocity.x = 0;
-        if (Velocity.z < 0.01f && Velocity.z > -0.01f) Velocity.z = 0;
+        // Zero velocity when it gets low enough
+        if (Velocity.x < 0.00001f && Velocity.x > -0.00001f) Velocity.x = 0;
+        if (Velocity.z < 0.00001f && Velocity.z > -0.00001f) Velocity.z = 0;
 
         Vector2 moveInput = MoveAction.ReadValue<Vector2>();
         Vector3 input = new Vector3(moveInput.x, 0, moveInput.y);
@@ -307,30 +319,28 @@ public class PlayerScript : MonoBehaviour
 
     void HandleExternalForce()
     {
+        // Reduce momentum after entering an air current or deploying the glider inside one
+        if (ApplyAirCurrentInitialFriction)
+            Velocity *= AirCurrentInitialFriction;
+        ApplyAirCurrentInitialFriction = false;
+
+        // retrieve force from touched air currents
         WindGlideForce = Vector3.zero;
         WindForce = Vector3.zero;
+
         foreach (WindCurrentScript current in ActiveAirCurrents)
         {
             WindGlideForce += current.GliderWindDirection;
             WindForce += current.WindDirection;
         }
 
+        // Apply air current forces
+        Velocity += WindForce * Time.deltaTime;
         if (CurrentState == PLAYER_STATES.GLIDING)
-        {
-            if (WindGlideForce + WindGlideForce == Vector3.zero)
-                return;
             Velocity += WindGlideForce * Time.deltaTime;
-            Velocity += WindForce * Time.deltaTime;
-        }
-        else
-        {
-            if (WindGlideForce == Vector3.zero)
-                return;
-            Velocity += WindForce * Time.deltaTime;
-        }
     }
 
-    public void AddForce(Vector3 force)
+    public void SetVelocity(Vector3 force)
     {
         Velocity = force;
     }
@@ -347,7 +357,6 @@ public class PlayerScript : MonoBehaviour
             CurrentState = PLAYER_STATES.IN_AIR;
             SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
         }
-
     }
     void HandleDive()
     {
@@ -405,6 +414,8 @@ public class PlayerScript : MonoBehaviour
             {
                 CurrentState = PLAYER_STATES.GLIDING;
                 SetAnim(SPRITE_FRAMES.GLIDING1, SPRITE_FRAMES.GLIDING_END);
+                if (ActiveAirCurrents.Count > 0)
+                    ApplyAirCurrentInitialFriction = true;
             }
             else if (CurrentState == PLAYER_STATES.GLIDING)
             {
@@ -502,5 +513,24 @@ public class PlayerScript : MonoBehaviour
     bool IsOnGround()
     {
         return TimeSinceGrounded < CoyoteTime;
+    }
+
+    void HandlePause()
+    {
+        if (PauseAction.WasPressedThisFrame())
+        {
+            if (IsPaused)
+            {
+                Time.timeScale = 1f;
+                PauseScreen.SetActive(false);
+                IsPaused = false;
+            }
+            else
+            {
+                Time.timeScale = 0f;
+                PauseScreen.SetActive(true);
+                IsPaused = true;
+            }
+        }
     }
 }

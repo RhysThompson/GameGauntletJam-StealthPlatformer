@@ -8,7 +8,7 @@ public class BouncerScript : MonoBehaviour
     {
         if (other.tag == "Player")
         {
-            other.GetComponent<PlayerScript>().AddForce(this.transform.up * BounceForce);
+            other.GetComponent<PlayerScript>().SetVelocity(this.transform.up * BounceForce);
         }
     }
 }
