@@ -50,14 +50,14 @@ MonoBehaviour:
   ActionAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   PlayerSpriteObj: {fileID: 4116610696381417054}
   SpriteSheets:
-  - {fileID: 2800000, guid: fad1310ab4a7103488d087aa636197eb, type: 3}
-  - {fileID: 2800000, guid: 665becdeb7307a3469e5f79c913838d2, type: 3}
-  - {fileID: 2800000, guid: 83e573c97e5771d4b8126d4470fa27c8, type: 3}
-  - {fileID: 2800000, guid: 5cd10ec1fc4999f42b48b119cf40a249, type: 3}
-  SpriteSheetWidth: 7
+  - {fileID: 2800000, guid: 30dc79cabce5689498ab028eeb1f72c5, type: 3}
+  - {fileID: 2800000, guid: 777b59cf2c66f424180f6ec6e952b28a, type: 3}
+  - {fileID: 2800000, guid: eda3db80179430546a16941c8f4f95c9, type: 3}
+  - {fileID: 2800000, guid: 3d4703fa9a8a04949bbd52a4c5c24d95, type: 3}
+  SpriteSheetWidth: 8
   SpriteSheetHeight: 1
   AnimFrameRate: 0.07
-  MoveSpeed: 80
+  MoveSpeed: 100
   AirControlPercentage: 0.15
   DiveControlPercentage: 0.05
   GlidingControlPercentage: 0.1
