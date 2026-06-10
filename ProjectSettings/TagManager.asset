@@ -7,6 +7,7 @@ TagManager:
   - AirCurrent
   - Checkpoint
   - Hazard
+  - Collectable
   layers:
   - Default
   - TransparentFX

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Windows;
@@ -52,6 +53,9 @@ public class PlayerScript : MonoBehaviour
     Material PlayerSpriteMat;
     private GameObject PauseScreen;
     public GameObject PauseScreenPrefab;
+    private GameObject ScoreScreen;
+    public GameObject ScoreScreenPrefab;
+    TextMeshProUGUI ScoreDisplay;
 
     public Texture2D[] SpriteSheets;
 
@@ -102,6 +106,9 @@ public class PlayerScript : MonoBehaviour
 
     List <WindCurrentScript> ActiveAirCurrents = new List<WindCurrentScript>();
 
+    private int NumberOfCollectablesCollected = 0;
+    private int TotalNumberOfCollectables = 0;
+
     void OnEnable()
     {
         ActionAsset.FindActionMap("Player").Enable();
@@ -122,6 +129,15 @@ public class PlayerScript : MonoBehaviour
         Controller = GetComponent<CharacterController>();
         LastCheckpoint = this.transform.position;
         PauseScreen = Instantiate(PauseScreenPrefab);
+        ScoreScreen = Instantiate(ScoreScreenPrefab);
+        Transform scoreDisplayObj = ScoreScreen.transform.Find("Score");
+        ScoreDisplay = scoreDisplayObj.GetComponent<TextMeshProUGUI>();
+
+        foreach (GameObject collectable in GameObject.FindGameObjectsWithTag("Collectable"))
+        {
+            TotalNumberOfCollectables++;
+        }
+        ScoreDisplay.text = "0/" + TotalNumberOfCollectables;
     }
 
     void OnTriggerEnter(Collider other)
@@ -139,6 +155,12 @@ public class PlayerScript : MonoBehaviour
         else if (other.tag == "Hazard")
         {
             Die();
+        }
+        else if (other.tag == "Collectable")
+        {
+            NumberOfCollectablesCollected++;
+            ScoreDisplay.text = NumberOfCollectablesCollected + "/" + TotalNumberOfCollectables;
+            other.GetComponent<Animator>().SetBool("Collected", true);
         }
     }
 
@@ -232,7 +254,7 @@ public class PlayerScript : MonoBehaviour
             }
             
             Vector3 move = transform.TransformDirection(input) * MoveSpeed * control;
-
+            
             if (IsOnGround())
             {
                 Velocity.x += move.x * Time.deltaTime;
@@ -240,12 +262,7 @@ public class PlayerScript : MonoBehaviour
 
                 // cap move speed
                 Vector3 vel = new Vector3(Velocity.x, 0, Velocity.z);
-
-                if (vel.magnitude > MaxGroundSpeed)
-                {
-                    vel = vel.normalized * MaxGroundSpeed;
-                }
-
+                vel = Vector3.ClampMagnitude(vel, MaxGroundSpeed);
                 Velocity = new Vector3(vel.x, Velocity.y, vel.z);
 
                 if (CurrentState != PLAYER_STATES.RUNNING)
@@ -261,12 +278,7 @@ public class PlayerScript : MonoBehaviour
 
                 // cap move speed
                 Vector3 vel = new Vector3(Velocity.x, 0, Velocity.z);
-
-                if (vel.magnitude > MaxAirSpeed && CurrentState != PLAYER_STATES.DIVING)
-                {
-                    vel = vel.normalized * MaxAirSpeed;
-                }
-
+                vel = Vector3.ClampMagnitude(vel, MaxAirSpeed);
                 Velocity = new Vector3(vel.x, Velocity.y, vel.z);
             }
         }

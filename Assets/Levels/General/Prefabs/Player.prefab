@@ -50,6 +50,7 @@ MonoBehaviour:
   ActionAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   PlayerSpriteObj: {fileID: 4116610696381417054}
   PauseScreenPrefab: {fileID: 2656978391583840575, guid: d2b8090eb735b9c4ba00c29c08accb07, type: 3}
+  ScoreScreenPrefab: {fileID: 2353421745282832524, guid: 8f200ecde6691fa4d943a9c03713a853, type: 3}
   SpriteSheets:
   - {fileID: 2800000, guid: 30dc79cabce5689498ab028eeb1f72c5, type: 3}
   - {fileID: 2800000, guid: 777b59cf2c66f424180f6ec6e952b28a, type: 3}
@@ -124,7 +125,7 @@ CharacterController:
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
+  m_MinMoveDistance: 0
   m_Center: {x: 0, y: 0.5, z: 0}
 --- !u!1 &4116610696381417054
 GameObject:
@@ -261,3 +262,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4ff9e6a8c4ad06439d666c7d01a9214, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BillboardSpriteHandler
+  LockVerticalRotation: 1
