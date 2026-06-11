@@ -89,6 +89,8 @@ public class PlayerScript : MonoBehaviour
     public float MaxGlidingFallSpeed = -2f;
     public float DiveSpeed = 10f;
     public float DiveDuration = 0.4f;
+    private Vector3 LastInputDirection = Vector3.forward;
+    private Vector3 DiveDirection;
 
     public float CoyoteTime = 0.15f;
     private float TimeSinceGrounded = 0f;
@@ -99,6 +101,7 @@ public class PlayerScript : MonoBehaviour
     private Vector3 WindForce = Vector3.zero;
     private Vector3 LastMovementDirection = Vector3.forward;
     private bool CanDive = false;
+    private bool CanGlide = false;
     private float DiveZeroGravTimer = 0f;
     private Vector3 LastCheckpoint;
     private bool IsPaused = false;
@@ -216,16 +219,28 @@ public class PlayerScript : MonoBehaviour
         this.transform.rotation = Quaternion.Euler(rot);
     }
 
-    void HandleGrounded()
-    {
-        TimeSinceGrounded += Time.deltaTime;
+   void HandleGrounded()
+{
+    TimeSinceGrounded += Time.deltaTime;
 
-        if(Controller.isGrounded)
-            TimeSinceGrounded = 0f;
+    if (Controller.isGrounded)
+    {
+        TimeSinceGrounded = 0f;
+
+        CanDive = true;
+        CanGlide = true;
     }
+}
 
     void HandleMovement()
     {
+
+        if (CurrentState == PLAYER_STATES.DIVING)
+        {
+            Velocity.x = DiveDirection.x * DiveSpeed;
+            Velocity.z = DiveDirection.z * DiveSpeed;
+            return;
+        }
         // Apply friction
         Velocity.x *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
         Velocity.z *= IsOnGround() ? GroundFrictionPercentage : AirFrictionPercentage;
@@ -240,6 +255,7 @@ public class PlayerScript : MonoBehaviour
         if (input.magnitude > 0)
         {
             OrientToCameraAngle();
+             LastInputDirection = transform.TransformDirection(input).normalized;
 
             // apply control debuffs for when movement control is reduced
             float control = 1f; 
@@ -379,7 +395,7 @@ public class PlayerScript : MonoBehaviour
         if (IsOnGround()) CanDive = true;
 
         // Check for and do the dive
-        if (DiveAction.WasPressedThisFrame() && !IsOnGround() && CurrentState == PLAYER_STATES.IN_AIR && CanDive)
+        if (DiveAction.WasPressedThisFrame() && !IsOnGround() && (CurrentState == PLAYER_STATES.IN_AIR ||CurrentState == PLAYER_STATES.GLIDING )&& CanDive)
         {
             StartDive();
         }
@@ -388,13 +404,51 @@ public class PlayerScript : MonoBehaviour
         if (CurrentState == PLAYER_STATES.DIVING)
         {
             DiveZeroGravTimer -= Time.deltaTime;
-
-            if (IsOnGround())
+         
+            if (IsOnGround()|| DiveAction.WasReleasedThisFrame())
                 EndDive();
         }
     }
+void StartDive()
+{
+    CurrentState = PLAYER_STATES.DIVING;
+    SetAnim(SPRITE_FRAMES.DIVE1, SPRITE_FRAMES.DIVE_END);
 
-    void StartDive()
+    CanDive = false;
+    DiveZeroGravTimer = DiveDuration;
+
+    Vector2 moveInput = MoveAction.ReadValue<Vector2>();
+
+    Vector3 dir;
+
+    if (moveInput.sqrMagnitude > 0.01f)
+    {
+        OrientToCameraAngle();
+
+        Vector3 input = new Vector3(moveInput.x, 0, moveInput.y);
+        dir = transform.TransformDirection(input).normalized;
+    }
+    else
+    {
+        dir = moveInput;
+        dir.y = 0;
+
+        if (dir.sqrMagnitude > 0.001f)
+        {
+            dir.Normalize();
+        }
+        else
+        {
+            OrientToCameraAngle();
+            dir = transform.forward;
+        }
+    }
+    DiveDirection = dir;
+    Velocity = DiveDirection * DiveSpeed;
+
+  
+}
+    void StartDiveOld()
     {
         CurrentState = PLAYER_STATES.DIVING;
         SetAnim(SPRITE_FRAMES.DIVE1, SPRITE_FRAMES.DIVE_END);
@@ -425,8 +479,10 @@ public class PlayerScript : MonoBehaviour
     {
         if (JumpAction.WasPressedThisFrame() && !IsOnGround())
         {
-            if (CurrentState == PLAYER_STATES.IN_AIR)
+           
+            if ((CurrentState == PLAYER_STATES.IN_AIR|| CurrentState == PLAYER_STATES.DIVING)&& CanGlide)
             {
+                 CanGlide = false;
                 CurrentState = PLAYER_STATES.GLIDING;
                 SetAnim(SPRITE_FRAMES.GLIDING1, SPRITE_FRAMES.GLIDING_END);
                 if (ActiveAirCurrents.Count > 0)
