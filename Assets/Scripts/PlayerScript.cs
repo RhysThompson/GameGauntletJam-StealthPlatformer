@@ -109,6 +109,9 @@ public class PlayerScript : MonoBehaviour
     private int NumberOfCollectablesCollected = 0;
     private int TotalNumberOfCollectables = 0;
 
+    private bool InDialogue = false;
+
+
     void OnEnable()
     {
         ActionAsset.FindActionMap("Player").Enable();
@@ -175,7 +178,7 @@ public class PlayerScript : MonoBehaviour
     void Update()
     {
         HandlePause();
-        if (IsPaused)
+        if (IsPaused || InDialogue)
             return;
 
         GetVelocity();
@@ -525,6 +528,16 @@ public class PlayerScript : MonoBehaviour
     bool IsOnGround()
     {
         return TimeSinceGrounded < CoyoteTime;
+    }
+
+    public bool IsInDialogue()
+    {
+        return InDialogue;
+    }
+
+    public void SetInDialogue(bool inDialogue)
+    {
+        InDialogue = inDialogue;
     }
 
     void HandlePause()
