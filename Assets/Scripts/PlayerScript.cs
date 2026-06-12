@@ -54,6 +54,9 @@ public class PlayerScript : MonoBehaviour
     public AudioClip ParachuteAudioClip;
     public AudioClip DeathAudioClip;
     public AudioClip JumpAudioClip;
+    public AudioClip DiveAudioClip;
+    public AudioClip BounceAudioClip;
+    public AudioClip CollectableAudioClip;
 
     public GameObject PlayerSpriteObj;
     Material PlayerSpriteMat;
@@ -177,6 +180,7 @@ public class PlayerScript : MonoBehaviour
             NumberOfCollectablesCollected++;
             ScoreDisplay.text = NumberOfCollectablesCollected + "/" + TotalNumberOfCollectables;
             other.GetComponent<Animator>().SetBool("Collected", true);
+            AudioPlayer.PlayOneShot(CollectableAudioClip);
         }
     }
 
@@ -398,6 +402,7 @@ public class PlayerScript : MonoBehaviour
     public void SetVelocity(Vector3 force)
     {
         Velocity = force;
+        AudioPlayer.PlayOneShot(BounceAudioClip);
     }
 
     void HandleJump()
@@ -442,7 +447,7 @@ void StartDive()
     CanDive = false;
     DiveZeroGravTimer = DiveDuration;
 
-    AudioPlayer.PlayOneShot(JumpAudioClip);
+    AudioPlayer.PlayOneShot(DiveAudioClip);
 
     Vector2 moveInput = MoveAction.ReadValue<Vector2>();
 
