@@ -38,7 +38,8 @@ enum PLAYER_STATES
     RUNNING,
     IN_AIR,
     DIVING,
-    GLIDING
+    GLIDING,
+    DEAD
 }
 public class PlayerScript : MonoBehaviour
 {
@@ -49,6 +50,11 @@ public class PlayerScript : MonoBehaviour
     InputAction DiveAction;
     InputAction PauseAction;
 
+    private AudioSource AudioPlayer;
+    public AudioClip ParachuteAudioClip;
+    public AudioClip DeathAudioClip;
+    public AudioClip JumpAudioClip;
+
     public GameObject PlayerSpriteObj;
     Material PlayerSpriteMat;
     private GameObject PauseScreen;
@@ -56,6 +62,7 @@ public class PlayerScript : MonoBehaviour
     private GameObject ScoreScreen;
     public GameObject ScoreScreenPrefab;
     TextMeshProUGUI ScoreDisplay;
+    public GameObject DeathScreenPrefab;
 
     public Texture2D[] SpriteSheets;
 
@@ -95,7 +102,7 @@ public class PlayerScript : MonoBehaviour
     public float CoyoteTime = 0.15f;
     private float TimeSinceGrounded = 0f;
 
-    private CharacterController Controller;
+    private CharacterController PlayerController;
     private Vector3 Velocity;
     private Vector3 WindGlideForce = Vector3.zero;
     private Vector3 WindForce = Vector3.zero;
@@ -113,7 +120,7 @@ public class PlayerScript : MonoBehaviour
     private int TotalNumberOfCollectables = 0;
 
     private bool InDialogue = false;
-
+    private bool ResetVelocity = false;
 
     void OnEnable()
     {
@@ -132,7 +139,7 @@ public class PlayerScript : MonoBehaviour
         DiveAction = InputSystem.actions.FindAction("Dive");
         PauseAction = InputSystem.actions.FindAction("Pause");
         PlayerSpriteMat = PlayerSpriteObj.GetComponent<Renderer>().material;
-        Controller = GetComponent<CharacterController>();
+        PlayerController = GetComponent<CharacterController>();
         LastCheckpoint = this.transform.position;
         PauseScreen = Instantiate(PauseScreenPrefab);
         ScoreScreen = Instantiate(ScoreScreenPrefab);
@@ -144,11 +151,14 @@ public class PlayerScript : MonoBehaviour
             TotalNumberOfCollectables++;
         }
         ScoreDisplay.text = "0/" + TotalNumberOfCollectables;
+        AudioPlayer = this.GetComponent<AudioSource>();
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if(other.tag == "AirCurrent")
+        if (CurrentState == PLAYER_STATES.DEAD)
+            return;
+        if (other.tag == "AirCurrent")
         {
             ActiveAirCurrents.Add(other.gameObject.GetComponent<WindCurrentScript>());
             if(CurrentState == PLAYER_STATES.GLIDING)
@@ -172,6 +182,8 @@ public class PlayerScript : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
+        if (CurrentState == PLAYER_STATES.DEAD)
+            return;
         if (other.tag == "AirCurrent")
         {
             ActiveAirCurrents.Remove(other.gameObject.GetComponent<WindCurrentScript>());
@@ -180,7 +192,11 @@ public class PlayerScript : MonoBehaviour
 
     void Update()
     {
+        if (CurrentState == PLAYER_STATES.DEAD)
+            return;
+
         HandlePause();
+        
         if (IsPaused || InDialogue)
             return;
 
@@ -201,12 +217,20 @@ public class PlayerScript : MonoBehaviour
 
     void GetVelocity()
     {
-        Velocity.x = Controller.velocity.x;
-        Velocity.z = Controller.velocity.z;
+        Velocity.x = PlayerController.velocity.x;
+        Velocity.z = PlayerController.velocity.z;
+
+        if(ResetVelocity)
+        {
+            ResetVelocity = false;
+            Velocity.x = 0;
+            Velocity.y = 0;
+            Velocity.z = 0;
+        }
     }
     void SetVelocity()
     {
-        Controller.Move(Velocity * Time.deltaTime);
+        PlayerController.Move(Velocity * Time.deltaTime);
     }
 
     void OrientToCameraAngle()
@@ -223,7 +247,7 @@ public class PlayerScript : MonoBehaviour
 {
     TimeSinceGrounded += Time.deltaTime;
 
-    if (Controller.isGrounded)
+    if (PlayerController.isGrounded)
     {
         TimeSinceGrounded = 0f;
 
@@ -381,6 +405,7 @@ public class PlayerScript : MonoBehaviour
         if (IsOnGround() && JumpAction.WasPressedThisFrame() && CurrentState != PLAYER_STATES.DIVING)
         {
             Velocity.y = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+            AudioPlayer.PlayOneShot(JumpAudioClip);
         }
 
         if ((CurrentState == PLAYER_STATES.IDLE || CurrentState == PLAYER_STATES.RUNNING) && !IsOnGround())
@@ -417,6 +442,8 @@ void StartDive()
     CanDive = false;
     DiveZeroGravTimer = DiveDuration;
 
+    AudioPlayer.PlayOneShot(JumpAudioClip);
+
     Vector2 moveInput = MoveAction.ReadValue<Vector2>();
 
     Vector3 dir;
@@ -445,8 +472,6 @@ void StartDive()
     }
     DiveDirection = dir;
     Velocity = DiveDirection * DiveSpeed;
-
-  
 }
     void StartDiveOld()
     {
@@ -471,6 +496,11 @@ void StartDive()
 
     void EndDive()
     {
+        if(IsOnGround())
+            SetAnim(SPRITE_FRAMES.IDLE1, SPRITE_FRAMES.IDLE_END);
+        else
+            SetAnim(SPRITE_FRAMES.INAIR, SPRITE_FRAMES.INAIR_END);
+
         CurrentState = PLAYER_STATES.IDLE;
         DiveZeroGravTimer = 0;
     }
@@ -483,7 +513,10 @@ void StartDive()
             if ((CurrentState == PLAYER_STATES.IN_AIR|| CurrentState == PLAYER_STATES.DIVING)&& CanGlide)
             {
                 // CanGlide = false;
+                DiveZeroGravTimer = 0;
+
                 CurrentState = PLAYER_STATES.GLIDING;
+                AudioPlayer.PlayOneShot(ParachuteAudioClip);
                 SetAnim(SPRITE_FRAMES.GLIDING1, SPRITE_FRAMES.GLIDING_END);
                 if (ActiveAirCurrents.Count > 0)
                     ApplyAirCurrentInitialFriction = true;
@@ -576,9 +609,20 @@ void StartDive()
 
     void Die()
     {
-        Controller.enabled = false;
+        CurrentState = PLAYER_STATES.DEAD;
+        Instantiate(DeathScreenPrefab);
+        AudioPlayer.PlayOneShot(DeathAudioClip);
+        ActiveAirCurrents.Clear();
+    }
+
+    public void Respawn()
+    {
+        PlayerController.enabled = false;
         this.transform.position = LastCheckpoint;
-        Controller.enabled = true;
+        PlayerController.enabled = true;
+        ResetVelocity = true;
+        SetAnim(SPRITE_FRAMES.IDLE1, SPRITE_FRAMES.IDLE_END);
+        CurrentState = PLAYER_STATES.IDLE;
     }
 
     bool IsOnGround()
