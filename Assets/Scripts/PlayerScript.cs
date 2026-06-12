@@ -323,7 +323,7 @@ public class PlayerScript : MonoBehaviour
             return;
 
         if (IsOnGround() && Velocity.y < 0)
-            Velocity.y = -0.3f;
+            Velocity.y = -9f;
 
 
         // apply gravity except when gliding in an air current
@@ -482,7 +482,7 @@ void StartDive()
            
             if ((CurrentState == PLAYER_STATES.IN_AIR|| CurrentState == PLAYER_STATES.DIVING)&& CanGlide)
             {
-                 CanGlide = false;
+                // CanGlide = false;
                 CurrentState = PLAYER_STATES.GLIDING;
                 SetAnim(SPRITE_FRAMES.GLIDING1, SPRITE_FRAMES.GLIDING_END);
                 if (ActiveAirCurrents.Count > 0)
