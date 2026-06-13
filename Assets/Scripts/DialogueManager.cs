@@ -24,7 +24,9 @@ using UnityEngine.UI;
 public enum CHARACTER_VOICE
 {
     NONE,
-    PLAYER,
+    TESTCHARACTER,
+    MOUSE,
+    ROBOT
 }
 
 [Serializable]

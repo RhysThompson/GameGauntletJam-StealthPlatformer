@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TestHuman
+  m_Name: MouseFriend
   m_Shader: {fileID: -6465566751694194690, guid: 096e0fddbc124e94b9ccc531eb4a4809, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -49,9 +49,9 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: e70e6074cc7c7d44eac713e37ce04ef3, type: 3}
-        m_Scale: {x: 0.25, y: 0.25}
-        m_Offset: {x: 0.5, y: 0.75}
+        m_Texture: {fileID: 2800000, guid: 777b59cf2c66f424180f6ec6e952b28a, type: 3}
+        m_Scale: {x: 0.125, y: 1}
+        m_Offset: {x: 0.725, y: 0}
     - _MetallicGlossMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}

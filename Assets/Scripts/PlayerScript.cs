@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.Windows;
 
 enum SPRITE_FRAMES
@@ -49,6 +50,7 @@ public class PlayerScript : MonoBehaviour
     InputAction JumpAction;
     InputAction DiveAction;
     InputAction PauseAction;
+    InputAction ReloadAction;
 
     private AudioSource AudioPlayer;
     public AudioClip ParachuteAudioClip;
@@ -141,6 +143,7 @@ public class PlayerScript : MonoBehaviour
         JumpAction = InputSystem.actions.FindAction("Jump");
         DiveAction = InputSystem.actions.FindAction("Dive");
         PauseAction = InputSystem.actions.FindAction("Pause");
+        ReloadAction = InputSystem.actions.FindAction("Reload");
         PlayerSpriteMat = PlayerSpriteObj.GetComponent<Renderer>().material;
         PlayerController = GetComponent<CharacterController>();
         LastCheckpoint = this.transform.position;
@@ -664,6 +667,10 @@ void StartDive()
                 Cursor.lockState = CursorLockMode.None;
                 IsPaused = true;
             }
+        }
+        if (ReloadAction.WasPressedThisFrame())
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
     }
 }
