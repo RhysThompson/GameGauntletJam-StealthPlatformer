@@ -37866,6 +37866,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5205212278339032338, guid: 28845dd8acdf6a646a93e78be90d4e6a, type: 3}
+      propertyPath: AvoidObstacles.SmoothingTime
+      value: 0.75
+      objectReference: {fileID: 0}
     - target: {fileID: 5423519291809216070, guid: 28845dd8acdf6a646a93e78be90d4e6a, type: 3}
       propertyPath: Lens.FieldOfView
       value: 84.5
@@ -62892,7 +62896,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3535698944662632114, guid: 41ce4e703c9b9774cbab75378d1b8f5d, type: 3}
       propertyPath: MoveSpeed
-      value: 532.2
+      value: 300
       objectReference: {fileID: 0}
     - target: {fileID: 3535698944662632114, guid: 41ce4e703c9b9774cbab75378d1b8f5d, type: 3}
       propertyPath: CoyoteTime
@@ -62941,6 +62945,10 @@ PrefabInstance:
     - target: {fileID: 3535698944662632114, guid: 41ce4e703c9b9774cbab75378d1b8f5d, type: 3}
       propertyPath: GlidingControlPercentage
       value: 0.91
+      objectReference: {fileID: 0}
+    - target: {fileID: 3535698944662632114, guid: 41ce4e703c9b9774cbab75378d1b8f5d, type: 3}
+      propertyPath: GroundFrictionPercentage
+      value: 0.6
       objectReference: {fileID: 0}
     - target: {fileID: 3855660741392384479, guid: 41ce4e703c9b9774cbab75378d1b8f5d, type: 3}
       propertyPath: VoiceClipGroups.Array.size
