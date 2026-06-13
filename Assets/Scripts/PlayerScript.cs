@@ -155,6 +155,7 @@ public class PlayerScript : MonoBehaviour
         }
         ScoreDisplay.text = "0/" + TotalNumberOfCollectables;
         AudioPlayer = this.GetComponent<AudioSource>();
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     void OnTriggerEnter(Collider other)
@@ -653,12 +654,14 @@ void StartDive()
             {
                 Time.timeScale = 1f;
                 PauseScreen.SetActive(false);
+                Cursor.lockState = CursorLockMode.Locked;
                 IsPaused = false;
             }
             else
             {
                 Time.timeScale = 0f;
                 PauseScreen.SetActive(true);
+                Cursor.lockState = CursorLockMode.None;
                 IsPaused = true;
             }
         }

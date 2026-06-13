@@ -67,9 +67,14 @@ public class DialogueInstruction
     }
 }
 
-
 [CreateAssetMenu(fileName = "Data", menuName = "Dialogue Set", order = 1)]
 public class DialogueSet : ScriptableObject
+{
+    public List<DialogueInstruction> DialogueInstructions;
+}
+
+[Serializable]
+public class DialogueGroup
 {
     public List<DialogueInstruction> DialogueInstructions;
 }
@@ -116,8 +121,9 @@ public class DialogueManager : MonoBehaviour
     {
         DialogueCanvas = Instantiate(DialogueCanvasPrefab);
         DialogueBox = DialogueCanvas.transform.Find("Panel parent").Find("Panel").GetComponent<RectTransform>();
-        DialogueBoxIndicator = DialogueCanvas.transform.Find("Indicator Parent").gameObject;
-        DialogueBoxText = DialogueCanvas.transform.Find("Text").GetComponent<TextMeshProUGUI>();
+        DialogueBoxIndicator = DialogueCanvas.transform.Find("Panel parent").Find("Indicator Parent").gameObject;
+        DialogueBoxText = DialogueCanvas.transform.Find("Panel parent").Find("Text").GetComponent<TextMeshProUGUI>();
+        DialogueBoxText.text = "";
         TalkIndicator = DialogueCanvas.transform.Find("Talk").gameObject;
         TalkIndicator.SetActive(false);
 
@@ -312,7 +318,7 @@ public class DialogueManager : MonoBehaviour
         return InDialogue;
     }
 
-    public bool SetupDialogue(DialogueSet instructions, CinemachineCamera camera)
+    public bool SetupDialogue(DialogueGroup instructions, CinemachineCamera camera)
     {
         if (CurrentState != DialogueState.NONE)
             return false ;

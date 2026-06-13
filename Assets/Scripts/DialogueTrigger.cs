@@ -11,7 +11,7 @@ public class DialogueTrigger : MonoBehaviour
 
     public CinemachineCamera TargetedCamera;
 
-    public List<DialogueSet> Dialogue;
+    public List<DialogueGroup> Dialogue;
     [Tooltip("Used for one off triggers when entering an area.")]
     public bool AutoTrigger = false;
     [Tooltip("When off the last dialogue in the list will be used ever and over.")]
