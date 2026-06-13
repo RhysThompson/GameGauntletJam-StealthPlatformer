@@ -204,7 +204,16 @@ MonoBehaviour:
   ActionAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   TargetedCamera: {fileID: 5517659999102665073}
   Dialogue:
-  - {fileID: 11400000, guid: 48f8aef6640d08d409e911d4b60e20c5, type: 2}
-  - {fileID: 11400000, guid: 9e5aa5d817e334e418f7748b5dcec001, type: 2}
+  - DialogueInstructions: []
+  - DialogueInstructions:
+    - Text: 
+      ClearExistingText: 0
+      NewLine: 0
+      WaitForPlayerInput: 0
+      StartDelay: 0
+      PerLetterDelay: 0
+      VoiceClipGroup: 0
+      PlaySoundOnce: 0
+      LetterDelayBetweenSounds: 0
   AutoTrigger: 0
   LoopDialogue: 1
